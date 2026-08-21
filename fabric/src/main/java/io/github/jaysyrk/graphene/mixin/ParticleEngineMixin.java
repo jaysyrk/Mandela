@@ -24,7 +24,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(ParticleEngine.class)
 public abstract class ParticleEngineMixin {
 
-    private int graphene$counter;
     private double graphene$credit;
 
     @Inject(method = "createParticle", at = @At("HEAD"), cancellable = true)
@@ -44,7 +43,6 @@ public abstract class ParticleEngineMixin {
             cir.setReturnValue(null);
             return;
         }
-        graphene$counter++;
         // Accumulate fractional allowance and spend it a whole particle at a time, which spreads
         // the survivors evenly through the stream at any density.
         graphene$credit += density;

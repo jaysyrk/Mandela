@@ -132,8 +132,13 @@ public final class GrapheneCommand {
                 config.isEnabled() ? "on" : "off", config.getMode(), config.getTargetFps()));
         reply(source, String.format("  %.0f fps average, %.0f fps 1%% low, %d spikes recently",
                 stats.meanFps(), stats.onePercentLowFps(), stats.spikesInWindow()));
+        long targetMicros = runtime.governor().config().targetFrameMicros();
+        double budgetUsed = targetMicros <= 0 ? 0.0 : (double) stats.p95Micros() / targetMicros * 100.0;
         reply(source, String.format("  quality %.0f%% (%s), using %.0f%% of the frame budget",
-                governor.quality() * 100, governor.phase(), governor.loadRatio() * 100));
+                runtime.settings().visualScore() * 100,
+                config.getMode() == GrapheneConfig.Mode.ADAPTIVE ? governor.phase().toString()
+                        : config.getMode().toString(),
+                budgetUsed));
         reply(source, String.format("  culled %d of %d entities last frame, %d block entities skipped",
                 runtime.entityVisibility().culledLastFrame(),
                 runtime.entityVisibility().consideredLastFrame(),

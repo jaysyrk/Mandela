@@ -72,7 +72,7 @@ public abstract class EntityRenderDispatcherMixin {
         }
 
         QualitySettings settings = runtime.settings();
-        double limit = entityDrawDistance(client) * settings.entityDistanceScale();
+        double limit = runtime.entityDrawDistance() * settings.entityDistanceScale();
         if (distanceSq > limit * limit) {
             cir.setReturnValue(false);
             return;
@@ -102,15 +102,5 @@ public abstract class EntityRenderDispatcherMixin {
             default -> {
             }
         }
-    }
-
-    /** Vanilla's own entity draw distance, which the quality scale is applied on top of. */
-    private static double entityDrawDistance(Minecraft client) {
-        if (client == null || client.options == null) {
-            return 64.0;
-        }
-        double chunks = client.options.getEffectiveRenderDistance();
-        double scaling = client.options.entityDistanceScaling().get();
-        return Math.max(16.0, chunks * 16.0 * scaling);
     }
 }

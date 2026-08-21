@@ -69,16 +69,47 @@ public final class DiagnosticsHud implements HudRenderCallback {
     private int drawSummary(GuiGraphics graphics, FrameStats stats, GovernorState governor, int y) {
         String headline = String.format(
                 "Graphene  %.0f fps  |  1%% low %.0f  |  %s",
-                stats.meanFps(), stats.onePercentLowFps(), governor.phase());
+                stats.meanFps(), stats.onePercentLowFps(), statusWord(governor));
         drawLine(graphics, headline, y, colourForPhase(governor));
         return y + LINE_HEIGHT;
+    }
+
+    /**
+     * How much of the frame budget the measured frame time is using.
+     *
+     * <p>Computed from the statistics rather than read off the governor, because the governor only
+     * runs in adaptive mode and would report zero in the other two -- turning the one number an
+     * observing player is there to read into a flat lie.
+     */
+    private double budgetUsedPercent(FrameStats stats) {
+        long target = runtime.governor().config().targetFrameMicros();
+        return target <= 0 ? 0.0 : (double) stats.p95Micros() / target * 100.0;
+    }
+
+    /**
+     * What to call the current state.
+     *
+     * <p>The governor only runs in adaptive mode, so reporting its phase in the other two would show
+     * a stale or disabled controller and read as a fault. In those modes the mode itself is the
+     * honest answer.
+     */
+    private String statusWord(GovernorState governor) {
+        GrapheneConfig config = runtime.config();
+        if (!config.isEnabled()) {
+            return "off";
+        }
+        return switch (config.getMode()) {
+            case ADAPTIVE -> governor.phase().toString();
+            case FIXED -> "FIXED profile";
+            case OBSERVE -> "OBSERVING (changing nothing)";
+        };
     }
 
     private int drawDetail(GuiGraphics graphics, FrameStats stats, GovernorState governor, int y) {
         drawLine(graphics, String.format(
                 "quality %.0f%%  |  budget used %.0f%%  |  frame %.1f ms (p95 %.1f, p99 %.1f)",
-                governor.quality() * 100,
-                governor.loadRatio() * 100,
+                runtime.settings().visualScore() * 100,
+                budgetUsedPercent(stats),
                 FrameStats.microsToMillis(stats.meanMicros()),
                 FrameStats.microsToMillis(stats.p95Micros()),
                 FrameStats.microsToMillis(stats.p99Micros())), y, COLOUR_TEXT);
@@ -148,7 +179,10 @@ public final class DiagnosticsHud implements HudRenderCallback {
         graphics.drawString(client.font, text, MARGIN, y, colour, false);
     }
 
-    private static int colourForPhase(GovernorState governor) {
+    private int colourForPhase(GovernorState governor) {
+        if (runtime.config().getMode() != GrapheneConfig.Mode.ADAPTIVE) {
+            return COLOUR_TEXT;
+        }
         return switch (governor.phase()) {
             case SATURATED -> COLOUR_BAD;
             case DROPPING, SPIKE_GUARD -> COLOUR_WARN;
