@@ -1,20 +1,20 @@
 {
   "schemaVersion": 1,
-  "id": "graphene",
+  "id": "mandela",
   "version": "${version}",
-  "name": "Graphene",
+  "name": "Mandela",
   "description": "An adaptive performance engine for Minecraft. Holds a frame-rate target by trading detail the player is least likely to miss, culls entities hidden behind terrain, and can measure your machine to find the best settings it can actually sustain.",
   "authors": ["jaysyrk"],
   "contact": {
-    "sources": "https://github.com/jaysyrk/graphene",
-    "issues": "https://github.com/jaysyrk/graphene/issues"
+    "sources": "https://github.com/jaysyrk/Mandela",
+    "issues": "https://github.com/jaysyrk/Mandela/issues"
   },
   "license": "MIT",
   "environment": "client",
   "entrypoints": {
-    "client": ["io.github.jaysyrk.graphene.client.GrapheneClient"]
+    "client": ["io.github.jaysyrk.mandela.client.MandelaClient"]
   },
-  "mixins": ["graphene.mixins.json"],
+  "mixins": ["mandela.mixins.json"],
   "depends": {
     "fabricloader": ">=${loader_version}",
     "fabric-api": "*",

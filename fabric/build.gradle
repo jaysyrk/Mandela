@@ -13,7 +13,7 @@ loom {
     // single most common way a performance mod turns into a no-op after a game update.
     mixin {
         useLegacyMixinAp = true
-        defaultRefmapName = "graphene.refmap.json"
+        defaultRefmapName = "mandela.refmap.json"
     }
 }
 
@@ -57,8 +57,8 @@ tasks.register('verifyMixinTargets') {
     group = 'verification'
     dependsOn tasks.named('compileJava')
 
-    def sourceDir = file('src/main/java/io/github/jaysyrk/graphene/mixin')
-    def refmapFile = layout.buildDirectory.file('classes/java/main/graphene.refmap.json')
+    def sourceDir = file('src/main/java/io/github/jaysyrk/mandela/mixin')
+    def refmapFile = layout.buildDirectory.file('classes/java/main/mandela.refmap.json')
     inputs.dir(sourceDir)
     inputs.file(refmapFile)
     outputs.upToDateWhen { false }
@@ -70,7 +70,7 @@ tasks.register('verifyMixinTargets') {
         def checked = 0
 
         sourceDir.eachFileMatch(~/.*\.java/) { source ->
-            def className = "io/github/jaysyrk/graphene/mixin/" + source.name.replace('.java', '')
+            def className = "io/github/jaysyrk/mandela/mixin/" + source.name.replace('.java', '')
             def resolved = mappings[className] ?: [:]
             def text = source.text
 
