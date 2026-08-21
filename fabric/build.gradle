@@ -1,0 +1,102 @@
+plugins {
+    id 'fabric-loom' version '1.17.19'
+}
+
+base {
+    archivesName = project.property('archives_base_name')
+}
+
+loom {
+    // The mixin annotation processor is what checks, at build time, that every method a mixin
+    // claims to target actually exists in the class it targets. Without it a renamed vanilla method
+    // is not a compile error -- it is a mixin that silently fails to apply at runtime, which is the
+    // single most common way a performance mod turns into a no-op after a game update.
+    mixin {
+        useLegacyMixinAp = true
+        defaultRefmapName = "graphene.refmap.json"
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.property('minecraft_version')}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.property('loader_version')}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.property('fabric_api_version')}"
+
+    implementation project(':core')
+    include project(':core')
+}
+
+processResources {
+    inputs.property 'version', project.version
+    inputs.property 'minecraft_version', project.property('minecraft_version')
+    inputs.property 'loader_version', project.property('loader_version')
+
+    filesMatching('fabric.mod.json') {
+        expand(
+            version: project.version,
+            minecraft_version: project.property('minecraft_version'),
+            loader_version: project.property('loader_version')
+        )
+    }
+}
+
+/**
+ * Fails the build if any mixin targets a method that does not exist in the game.
+ *
+ * The annotation processor knows the answer -- it resolves every target while generating the refmap
+ * -- but it reports a miss as a warning, and a warning in a thousand-line build log is not a signal
+ * anyone acts on. The consequence of ignoring it is specific and bad: the mixin compiles, ships, and
+ * silently never applies, so the mod loads, reports itself as working, and does nothing. That is the
+ * usual way an optimisation mod dies after a game update.
+ *
+ * So this reads back what the processor resolved and insists every declared target is in there.
+ */
+tasks.register('verifyMixinTargets') {
+    description = 'Checks that every mixin target was resolved against the game.'
+    group = 'verification'
+    dependsOn tasks.named('compileJava')
+
+    def sourceDir = file('src/main/java/io/github/jaysyrk/graphene/mixin')
+    def refmapFile = layout.buildDirectory.file('classes/java/main/graphene.refmap.json')
+    inputs.dir(sourceDir)
+    inputs.file(refmapFile)
+    outputs.upToDateWhen { false }
+
+    doLast {
+        def refmap = new groovy.json.JsonSlurper().parse(refmapFile.get().asFile)
+        def mappings = refmap.mappings ?: [:]
+        def problems = []
+        def checked = 0
+
+        sourceDir.eachFileMatch(~/.*\.java/) { source ->
+            def className = "io/github/jaysyrk/graphene/mixin/" + source.name.replace('.java', '')
+            def resolved = mappings[className] ?: [:]
+            def text = source.text
+
+            def targets = [] as Set
+            (text =~ /method\s*=\s*"([^"]+)"/).each { match -> targets << match[1] }
+            (text =~ /@Accessor\("([^"]+)"\)/).each { match -> targets << match[1] }
+
+            targets.each { target ->
+                checked++
+                if (!resolved.containsKey(target)) {
+                    problems << "${source.name}: '${target}' did not resolve to anything in Minecraft"
+                }
+            }
+        }
+
+        if (!problems.isEmpty()) {
+            throw new GradleException(
+                "Mixin targets that do not exist in this Minecraft version:\n  "
+                    + problems.join("\n  ")
+                    + "\nThese would compile and ship as mixins that never apply.")
+        }
+        logger.lifecycle("Verified ${checked} mixin targets against Minecraft "
+            + project.property('minecraft_version') + ".")
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('verifyMixinTargets')
+}

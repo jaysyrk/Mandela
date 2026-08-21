@@ -1,0 +1,22 @@
+subprojects {
+    apply plugin: 'java'
+
+    group = project.property('maven_group')
+    version = project.property('mod_version')
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(project.property('java_version') as int)
+        }
+        withSourcesJar()
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+        options.release = project.property('java_version') as int
+    }
+
+    repositories {
+        mavenCentral()
+    }
+}
